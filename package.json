@@ -16,7 +16,6 @@
     "ai": "^4.0.0",
     "@ai-sdk/openai": "^1.0.0",
     "@ai-sdk/anthropic": "^1.0.0",
-    "@vercel/ai-workflow": "^0.1.0",
     "firebase": "^10.12.0",
     "firebase-admin": "^12.0.0",
     "stripe": "^14.21.0",
