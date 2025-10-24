@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeContentWizard, streamContentWizard, ContentWizardInput } from '@/lib/agents/content-wizard'
 import { db } from '@/lib/firebase/config'
-import { doc, setDoc, updateDoc, increment } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore'
 import { z } from 'zod'
 
 // Input validation schema
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     // Check user credits
     const userRef = doc(db, 'users', userId)
-    const userDoc = await userRef.get()
+    const userDoc = await getDoc(userRef)
     
     if (!userDoc.exists()) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userData = userDoc.data()
-    const credits = userData.credits || 0
+    const credits = userData?.credits || 0
 
     if (credits < 1) {
       return NextResponse.json(
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const executionRef = doc(db, 'executions', executionId)
-    const executionDoc = await executionRef.get()
+    const executionDoc = await getDoc(executionRef)
 
     if (!executionDoc.exists()) {
       return NextResponse.json(
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
     const execution = executionDoc.data()
 
     // Verify ownership
-    if (execution.userId !== userId) {
+    if (execution?.userId !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
