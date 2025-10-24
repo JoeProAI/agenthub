@@ -1,4 +1,4 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app'
 import { getAuth, Auth } from 'firebase/auth'
 import { getFirestore, Firestore } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage'
@@ -12,22 +12,34 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-// Initialize Firebase
-let app: FirebaseApp
-let auth: Auth
-let db: Firestore
-let storage: FirebaseStorage
+// Initialize Firebase (client-side only)
+function initializeFirebase() {
+  if (typeof window === 'undefined') {
+    // Return dummy objects for server-side
+    return {
+      app: null as any,
+      auth: null as any,
+      db: null as any,
+      storage: null as any,
+    }
+  }
 
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig)
-  auth = getAuth(app)
-  db = getFirestore(app)
-  storage = getStorage(app)
-} else {
-  app = getApps()[0]
-  auth = getAuth(app)
-  db = getFirestore(app)
-  storage = getStorage(app)
+  let app: FirebaseApp
+  
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig)
+  } else {
+    app = getApp()
+  }
+
+  return {
+    app,
+    auth: getAuth(app),
+    db: getFirestore(app),
+    storage: getStorage(app),
+  }
 }
+
+const { app, auth, db, storage } = initializeFirebase()
 
 export { app, auth, db, storage }
