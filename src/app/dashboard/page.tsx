@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
-import { Bot, CreditCard, Sparkles, ArrowRight, LogOut, FileText } from 'lucide-react'
+import { Terminal, Activity, Zap, ArrowRight, LogOut, FileText, TrendingUp, Database } from 'lucide-react'
 import Link from 'next/link'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase/config'
@@ -16,10 +16,12 @@ export default function DashboardPage() {
   const [totalExecutions, setTotalExecutions] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
-  // Content Wizard State
+  // Content Engine State
   const [content, setContent] = useState('')
-  const [format, setFormat] = useState<'blog' | 'social' | 'documentation' | 'email'>('blog')
-  const [tone, setTone] = useState<'professional' | 'casual' | 'technical' | 'friendly'>('professional')
+  const [format, setFormat] = useState<'blog' | 'social' | 'documentation' | 'email' | 'landing-page'>('blog')
+  const [tone, setTone] = useState<'professional' | 'casual' | 'technical' | 'friendly' | 'persuasive'>('professional')
+  const [seoOptimize, setSeoOptimize] = useState(true)
+  const [factCheck, setFactCheck] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState('')
 
@@ -57,7 +59,7 @@ export default function DashboardPage() {
     setResult('')
 
     try {
-      const response = await fetch('/api/agents/content-wizard', {
+      const response = await fetch('/api/agents/content-engine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -65,7 +67,11 @@ export default function DashboardPage() {
           format,
           tone,
           userId: user.uid,
-          stream: false
+          options: {
+            seoOptimize,
+            factCheck,
+            includeImages: false
+          }
         })
       })
 
@@ -75,9 +81,9 @@ export default function DashboardPage() {
       }
 
       const data = await response.json()
-      setResult(data.result.content)
+      setResult(data.content)
       setCredits(data.creditsRemaining)
-      toast.success('Content generated!')
+      toast.success(`Generated ${data.metadata.wordCount} words in ${Math.round(data.metadata.readingTime)}min read`)
     } catch (error: any) {
       console.error(error)
       toast.error(error.message || 'Failed to generate content')
@@ -103,13 +109,13 @@ export default function DashboardPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <Link href="/" className="flex items-center gap-2">
-              <Bot className="w-8 h-8 text-blue-500" />
+              <Terminal className="w-8 h-8 text-blue-500" />
               <span className="text-2xl font-bold text-white">AgentHub</span>
             </Link>
             
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-lg">
-                <Sparkles className="w-5 h-5 text-yellow-500" />
+                <Zap className="w-5 h-5 text-blue-400" />
                 <span className="text-white font-semibold">{credits}</span>
                 <span className="text-slate-400 text-sm">credits</span>
               </div>
@@ -140,12 +146,12 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* Content Wizard */}
+            {/* Content Engine */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-6">
-                <FileText className="w-8 h-8 text-blue-500" />
+                <Terminal className="w-8 h-8 text-blue-500" />
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Content Wizard</h2>
+                  <h2 className="text-2xl font-bold text-white">Content Engine</h2>
                   <p className="text-slate-400">Transform your notes into polished content</p>
                 </div>
               </div>
@@ -211,8 +217,8 @@ export default function DashboardPage() {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5" />
-                    Generate Content
+                    <Zap className="w-5 h-5" />
+                    Execute
                   </>
                 )}
               </button>
@@ -261,8 +267,8 @@ export default function DashboardPage() {
 
             {/* Add Credits */}
             <div className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-blue-500/20 rounded-xl p-6">
-              <CreditCard className="w-8 h-8 text-blue-400 mb-3" />
-              <h3 className="text-lg font-semibold text-white mb-2">Need More Credits?</h3>
+              <Database className="w-8 h-8 text-blue-400 mb-3" />
+              <h3 className="text-lg font-semibold text-white mb-2">Scale Your Usage</h3>
               <p className="text-slate-400 text-sm mb-4">
                 Upgrade to unlock unlimited potential
               </p>
@@ -275,17 +281,17 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* More Agents */}
+            {/* More Workflows */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-3">More Agents</h3>
+              <h3 className="text-lg font-semibold text-white mb-3">More Workflows</h3>
               <p className="text-slate-400 text-sm mb-4">
-                Explore our marketplace of AI agents
+                Explore automation workflows
               </p>
               <Link
                 href="/marketplace"
                 className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition text-sm font-medium"
               >
-                Browse Marketplace
+                Browse Workflows
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
