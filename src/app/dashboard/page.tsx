@@ -114,6 +114,13 @@ export default function DashboardPage() {
             </Link>
             
             <div className="flex items-center gap-6">
+              <Link
+                href="/chat"
+                className="text-slate-400 hover:text-white transition"
+              >
+                Chat
+              </Link>
+              
               <div className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-lg">
                 <Zap className="w-5 h-5 text-blue-400" />
                 <span className="text-white font-semibold">{credits}</span>
