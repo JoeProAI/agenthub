@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateText, generateObject, tool } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
-import { doc, getDoc, updateDoc, addDoc, collection, increment } from 'firebase/firestore'
-import { db } from '@/lib/firebase/config'
+import { adminDb } from '@/lib/firebase/admin'
+import { FieldValue } from 'firebase-admin/firestore'
 
 /**
  * REAL VERCEL AI AGENT - Research Engine
@@ -132,10 +132,10 @@ export async function POST(request: NextRequest) {
 
     // 2. Check credits (Research costs more - 10 credits)
     const COST = 10
-    const userRef = doc(db, 'users', input.userId)
-    const userDoc = await getDoc(userRef)
+    const userRef = adminDb.collection('users').doc(input.userId)
+    const userDoc = await userRef.get()
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -149,13 +149,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Deduct credits
-    await updateDoc(userRef, {
-      credits: increment(-COST),
-      totalExecutions: increment(1),
+    await userRef.update({
+      credits: FieldValue.increment(-COST),
+      totalExecutions: FieldValue.increment(1),
     })
 
     // 4. Create execution record
-    const executionRef = await addDoc(collection(db, 'executions'), {
+    const executionRef = await adminDb.collection('executions').add({
       id: executionId,
       agentId: 'research-engine',
       userId: input.userId,
@@ -192,7 +192,7 @@ Be thorough and cite all sources. Depth level: ${input.depth}`,
       .flatMap(step => step.toolResults)
 
     // 7. Update execution
-    await updateDoc(doc(db, 'executions', executionRef.id), {
+    await executionRef.update({
       status: 'completed',
       completedAt: new Date().toISOString(),
       output: {
@@ -225,8 +225,11 @@ Be thorough and cite all sources. Depth level: ${input.depth}`,
 
     // Refund credits on error
     try {
-      const userRef = doc(db, 'users', (await request.json()).userId)
-      await updateDoc(userRef, { credits: increment(10) })
+      const body = await request.json()
+      if (body.userId) {
+        const userRef = adminDb.collection('users').doc(body.userId)
+        await userRef.update({ credits: FieldValue.increment(10) })
+      }
     } catch (refundError) {
       console.error('Failed to refund credits:', refundError)
     }
@@ -258,10 +261,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const executionRef = doc(db, 'executions', executionId)
-    const executionDoc = await getDoc(executionRef)
+    const executionRef = adminDb.collection('executions').doc(executionId)
+    const executionDoc = await executionRef.get()
 
-    if (!executionDoc.exists()) {
+    if (!executionDoc.exists) {
       return NextResponse.json(
         { error: 'Execution not found' },
         { status: 404 }

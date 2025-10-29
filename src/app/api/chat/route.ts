@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server'
 import { streamText, tool } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
-import { doc, getDoc, updateDoc, addDoc, collection, increment } from 'firebase/firestore'
-import { db } from '@/lib/firebase/config'
+import { adminDb } from '@/lib/firebase/admin'
+import { FieldValue } from 'firebase-admin/firestore'
 
 /**
  * Streaming Chat API - Real-time agent interaction
@@ -128,10 +128,12 @@ const COST_PER_MESSAGE = 5
 
 export async function POST(req: NextRequest) {
   const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  let userId: string | undefined
 
   try {
     const body = await req.json()
-    const { messages, userId } = body
+    userId = body.userId
+    const { messages } = body
 
     if (!userId) {
       return new Response(
@@ -148,10 +150,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Check credits
-    const userRef = doc(db, 'users', userId)
-    const userDoc = await getDoc(userRef)
+    const userRef = adminDb.collection('users').doc(userId)
+    const userDoc = await userRef.get()
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
@@ -171,13 +173,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Deduct credits
-    await updateDoc(userRef, {
-      credits: increment(-COST_PER_MESSAGE),
-      totalExecutions: increment(1),
+    await userRef.update({
+      credits: FieldValue.increment(-COST_PER_MESSAGE),
+      totalExecutions: FieldValue.increment(1),
     })
 
     // Create execution record
-    const executionRef = await addDoc(collection(db, 'executions'), {
+    const executionRef = await adminDb.collection('executions').add({
       id: executionId,
       agentId: 'streaming-chat',
       userId,
@@ -209,7 +211,7 @@ Be concise, professional, and accurate. Show your reasoning process.`,
       // Callback when generation finishes
       onFinish: async (result) => {
         // Update execution record
-        await updateDoc(doc(db, 'executions', executionRef.id), {
+        await executionRef.update({
           status: 'completed',
           completedAt: new Date().toISOString(),
           output: {
@@ -229,12 +231,11 @@ Be concise, professional, and accurate. Show your reasoning process.`,
 
     // Refund credits on error
     try {
-      const body = await req.json()
-      if (body.userId) {
-        const userRef = doc(db, 'users', body.userId)
-        await updateDoc(userRef, {
-          credits: increment(COST_PER_MESSAGE),
-          totalExecutions: increment(-1),
+      if (userId) {
+        const userRef = adminDb.collection('users').doc(userId)
+        await userRef.update({
+          credits: FieldValue.increment(COST_PER_MESSAGE),
+          totalExecutions: FieldValue.increment(-1),
         })
       }
     } catch (refundError) {
